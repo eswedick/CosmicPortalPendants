@@ -74,9 +74,9 @@ void setMode(){
 volatile bool buttonPressed = false;
 volatile bool buttonDoublePressed = false;
 volatile bool buttonHeld = false;
-unsigned long lastButtonPressTime = 0;
+volatile unsigned long lastButtonPressTime = 0;
 const unsigned long doublePressTimeout = 500;
-const unsigned long holdThreshold = 5000;
+const unsigned long holdThreshold = 3000;
 
 //sleep
 volatile bool sleepMode = false;
@@ -115,7 +115,8 @@ bool patternTesting = false;
 
 void loop() {
   if (patternTesting){
-    ringPulse(CYAN, 80);
+//    ringPulse(CYAN, 80);
+    run();
   }else{
     float usbLevel = getUSBStatus();
     if (usbLevel > 0.8) {
@@ -143,6 +144,14 @@ void run(){
     sleepMode = false;
   }
 
+  if(buttonState == LOW && (millis() - lastButtonPressTime >= holdThreshold)){
+    sleepMode = !sleepMode;
+    if (sleepMode){
+      LEDoff();
+    }
+    buttonPressed = false;     
+  }
+
   if (!sleepMode){
     if (buttonPressed) {
       int buttonState = digitalRead(BUTTON);
@@ -164,7 +173,7 @@ void run(){
 
     setMode();
   }else if (sleepMode){
-    esp_sleep_enable_timer_wakeup(3000000); // 3 sec
+    esp_sleep_enable_timer_wakeup(5000000); // 3 sec
     esp_light_sleep_start();
   }
 }
