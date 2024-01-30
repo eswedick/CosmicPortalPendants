@@ -114,45 +114,59 @@ void setup() {
 bool patternTesting = false;
 
 void loop() {
-  float usbLevel = getUSBStatus();
   if (patternTesting){
     ringPulse(CYAN, 80);
   }else{
+    float usbLevel = getUSBStatus();
     if (usbLevel > 0.8) {
-      float batteryLevel = getBatteryLevel();
-      getChargeStatus(batteryLevel);
-      delay(1000);
-
-      LEDoff();
-      delay(1000);
+      batteryCharging();
     } 
     else {
-      if (buttonPressed) {
+      run();
+    }
+  }
+}
+
+void batteryCharging(){
+  float batteryLevel = getBatteryLevel();
+  getChargeStatus(batteryLevel);
+  delay(1000);
+
+  LEDoff();
+  delay(1000);
+}
+
+void run(){
+
+  int buttonState = digitalRead(BUTTON);
+  if(buttonState == LOW && sleepMode){
+    sleepMode = false;
+  }
+
+  if (!sleepMode){
+    if (buttonPressed) {
+      int buttonState = digitalRead(BUTTON);
+      if(buttonState == LOW && (millis() - lastButtonPressTime >= holdThreshold)){
+        sleepMode = !sleepMode;
+        buttonPressed = false;     
+      }
+      else if (buttonState == HIGH){
         currentMode = (currentMode + 1) % NUM_MODES;
-        
+      
         buttonPressed = false;
       }
+    }
 
-      if (buttonDoublePressed){
-        currentColor = (currentColor + 1) % NUM_COLORS;
-        buttonDoublePressed = false;
-      }
+    if (buttonDoublePressed){
+      currentColor = (currentColor + 1) % NUM_COLORS;
+      buttonDoublePressed = false;
+    }
 
-      if (buttonHeld && !sleepMode) {
-        buttonHeld = false;
-        esp_sleep_enable_timer_wakeup(1000000); // 5 sec
-        esp_light_sleep_start();
-
-      }else if(buttonHeld && sleepMode){
-        buttonHeld = false;
-        sleepMode = false;
-      }
-
-      setMode();
-      }
+    setMode();
+  }else if (sleepMode){
+    esp_sleep_enable_timer_wakeup(3000000); // 3 sec
+    esp_light_sleep_start();
   }
-  // esp_sleep_enable_timer_wakeup(1000000); // 1 sec
-  // esp_deep_sleep_start(); 
 }
 
 void handleButtonPress() {
@@ -164,11 +178,15 @@ void handleButtonPress() {
     // Reset the flag and reset the time
     buttonPressed = false;
     lastButtonPressTime = 0;
-  // } else if (currentTime - lastButtonPressTime >= holdThreshold) {
-  //   sleepMode = true;
-  //   buttonHeld = true;
-  //   buttonPressed = false;
-  } else {
+  } 
+  //else if (millis() - lastButtonPressTime >= holdThreshold) {
+    // Check for a long button press (5 seconds)
+    //return;
+    // Reset the flag and reset the time
+    // buttonPressed = false;
+    // lastButtonPressTime = 0;
+  //} 
+  else {
     lastButtonPressTime = currentTime;
     buttonPressed = true;
   }
@@ -494,6 +512,11 @@ void getChargeStatus(float voltage){
   else{
     LEDonBatteryLevel(RED, 1);
   }
+}
+
+void LEDon() {
+  pixels.setPixelColor(1, 255,0,0);
+  pixels.show();
 }
 
 void LEDoff() {
